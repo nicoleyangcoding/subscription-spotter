@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "subscription-spotter"
+version = "0.1.0"
+description = "Find recurring charges in bank or card CSV exports. Offline, no account, no dependencies."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Nicole Yang" }]
+requires-python = ">=3.9"
+dependencies = []
+keywords = ["subscriptions", "personal finance", "budgeting", "csv", "privacy", "recurring charges"]
+classifiers = [
+  "Environment :: Console",
+  "Intended Audience :: End Users/Desktop",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Topic :: Office/Business :: Financial",
+]
+
+[project.urls]
+Homepage = "https://github.com/nicoleyangcoding/subscription-spotter"
+Issues = "https://github.com/nicoleyangcoding/subscription-spotter/issues"
+Changelog = "https://github.com/nicoleyangcoding/subscription-spotter/blob/main/CHANGELOG.md"
+
+[project.scripts]
+subspot = "subspot.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/subspot"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

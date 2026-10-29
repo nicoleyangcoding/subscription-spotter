@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# Real statements must never be committed. Only the made-up sample is allowed.
+*.csv
+*.ofx
+*.qfx
+!examples/sample-statement.csv

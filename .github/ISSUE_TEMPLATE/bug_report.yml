@@ -1,0 +1,24 @@
+name: Bug report
+description: Something isn't detected or read correctly.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "**Please don't paste real transactions.** Change names, amounts and dates so nothing identifies you."
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: The command you ran and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Header row and a made-up example row
+      render: csv
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `subspot --version`
