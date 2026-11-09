@@ -56,6 +56,7 @@ You can pass several files at once, for example a checking account and a credit 
 | --- | --- |
 | `--ignore TEXT` | Skip charges whose description contains `TEXT` (repeatable), e.g. `--ignore rent` |
 | `--min-amount N` | Ignore charges under `N` |
+| `--since DATE` | Only use transactions on or after `DATE`, e.g. `--since 2026-01-01` |
 | `--currency SYMBOL` | Symbol shown before amounts (default `$`) |
 | `--format json` / `csv` | Machine-readable output |
 | `--dayfirst` | Read ambiguous dates like `03/04/2026` as 3 April |

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import datetime as dt
 import json
 import sys
 from decimal import Decimal, InvalidOperation
@@ -87,11 +88,23 @@ def as_rows(subs: list[Subscription]) -> list[dict[str, object]]:
     ]
 
 
+def iso_date(text: str) -> dt.date:
+    try:
+        return dt.date.fromisoformat(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"expected a date like 2026-01-31, got {text!r}") from None
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="subspot",
         description="Find recurring charges in bank or card CSV exports. Runs offline; nothing is uploaded.",
-        epilog="Examples:\n  subspot transactions.csv\n  subspot jan-jun.csv jul-dec.csv --currency EUR",
+        epilog=(
+            "Examples:\n"
+            "  subspot transactions.csv\n"
+            "  subspot jan-jun.csv jul-dec.csv --currency EUR\n"
+            "  subspot transactions.csv --since 2026-01-01"
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("files", nargs="+", help="one or more CSV exports")
@@ -101,6 +114,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--ignore", action="append", default=[], metavar="TEXT", help="skip descriptions containing TEXT"
     )
     parser.add_argument("--min-amount", default="0", metavar="N", help="ignore charges smaller than N")
+    parser.add_argument(
+        "--since", type=iso_date, metavar="DATE", help="only use transactions on or after DATE (YYYY-MM-DD)"
+    )
 
     cols = parser.add_argument_group("column and format overrides (normally detected automatically)")
     cols.add_argument("--date-col", metavar="NAME")
@@ -145,6 +161,12 @@ def main(argv: list[str] | None = None) -> int:
     except LoadError as exc:
         print(f"subspot: {exc}", file=sys.stderr)
         return 2
+
+    if args.since:
+        transactions = [t for t in transactions if t.date >= args.since]
+        if not transactions:
+            print(f"subspot: no transactions on or after {args.since}", file=sys.stderr)
+            return 2
 
     subs = find_subscriptions(transactions, tuple(args.ignore), min_amount)
 

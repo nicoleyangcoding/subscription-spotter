@@ -4,6 +4,8 @@ import datetime as dt
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
+
 from subspot.cli import main
 from subspot.detect import find_subscriptions
 from subspot.load import Transaction
@@ -121,3 +123,19 @@ def test_cli_errors(tmp_path, capsys):
     bad.write_text("a,b\n1,2\n")
     assert main([str(bad)]) == 2
     assert "--date-col" in capsys.readouterr().err
+
+
+def test_cli_since(capsys):
+    assert main([str(SAMPLE), "--since", "2026-06-01"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("Read ") and " from 2026-06-0" in out.splitlines()[0]
+    assert "Newsdaily" not in out and "Streamflix" in out
+
+
+def test_cli_since_errors(capsys):
+    assert main([str(SAMPLE), "--since", "2030-01-01"]) == 2
+    assert "no transactions on or after 2030-01-01" in capsys.readouterr().err
+    with pytest.raises(SystemExit) as exc:
+        main([str(SAMPLE), "--since", "01/02/2026"])
+    assert exc.value.code == 2
+    assert "expected a date like" in capsys.readouterr().err
