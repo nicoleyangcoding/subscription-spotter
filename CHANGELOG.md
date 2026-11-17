@@ -2,6 +2,12 @@
 
 All notable changes are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-11-17
+
+### Added
+- `--include-income` to list recurring money in, like paychecks, in its own section
+- Twice-a-month schedule (`half month`), so pay on the 1st and 15th isn't counted as every 2 weeks
+
 ## [0.2.0] - 2026-11-09
 
 ### Added

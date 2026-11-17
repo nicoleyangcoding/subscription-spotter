@@ -87,6 +87,21 @@ def test_income_and_ignore():
     assert find_subscriptions(charges, ignore=("gym",)) == []
 
 
+def twice_monthly(desc: str, amount: str, months: int) -> list[Transaction]:
+    return monthly(desc, amount, months, start=(2026, 1, 1)) + monthly(
+        desc, amount, months, start=(2026, 1, 15)
+    )
+
+
+def test_twice_a_month_and_every_two_weeks():
+    (sub,) = find_subscriptions(twice_monthly("PAYROLL ACME", "2650", 6))
+    assert sub.frequency.label == "half month" and sub.per_year == Decimal("63600")
+    start = dt.date(2026, 1, 2)
+    biweekly = [Transaction(start + dt.timedelta(days=14 * i), "DAYCARE", Decimal("400")) for i in range(10)]
+    (sub,) = find_subscriptions(biweekly)
+    assert sub.frequency.label == "2 weeks"
+
+
 def test_yearly_needs_two():
     charges = [tx("2025-03-01", "NEWSDAILY ANNUAL", "119"), tx("2026-03-02", "NEWSDAILY ANNUAL", "119")]
     (sub,) = find_subscriptions(charges)
@@ -139,3 +154,32 @@ def test_cli_since_errors(capsys):
         main([str(SAMPLE), "--since", "01/02/2026"])
     assert exc.value.code == 2
     assert "expected a date like" in capsys.readouterr().err
+
+
+def test_cli_include_income(capsys):
+    assert main([str(SAMPLE), "--include-income"]) == 0
+    out = capsys.readouterr().out
+    assert "Streamflix" in out
+    income = out.split("Recurring income:")[1]
+    assert "Payroll Deposit Acme  half month  $2,650.00  $63,600.00" in income
+    assert "1 recurring payment in, about $63,600.00 per year" in income
+    assert "Streamflix" not in income
+
+
+def test_cli_include_income_json_and_csv(capsys):
+    import json
+
+    main([str(SAMPLE), "--include-income", "--format", "json"])
+    rows = json.loads(capsys.readouterr().out)
+    assert {r["kind"] for r in rows} == {"charge", "income"}
+    assert [r["name"] for r in rows if r["kind"] == "income"] == ["Payroll Deposit Acme"]
+    main([str(SAMPLE), "--include-income", "--format", "csv"])
+    assert capsys.readouterr().out.startswith("kind,name,every")
+
+
+def test_cli_include_income_none_found(tmp_path, capsys):
+    statement = tmp_path / "card.csv"
+    lines = ["Date,Description,Amount"] + [f"2026-0{m}-05,CLOUDBOX,-2.99" for m in range(1, 5)]
+    statement.write_text("\n".join(lines) + "\n")
+    assert main([str(statement), "--include-income"]) == 0
+    assert "No recurring income found." in capsys.readouterr().out

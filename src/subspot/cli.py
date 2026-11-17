@@ -11,22 +11,26 @@ from decimal import Decimal, InvalidOperation
 
 from . import __version__
 from .detect import Subscription, find_subscriptions
-from .load import Columns, LoadError, read_csv
+from .load import Columns, LoadError, Transaction, read_csv
 
 
 def money(value: Decimal, symbol: str) -> str:
     return f"{symbol}{value:,.2f}"
 
 
-def _note(sub: Subscription, symbol: str) -> str:
+def _note(sub: Subscription, symbol: str, income: bool = False) -> str:
     if sub.price_changed:
         direction = "up" if sub.amount > sub.previous_amount else "down"
-        return f"price {direction} from {money(sub.previous_amount, symbol)}"
+        what = "amount" if income else "price"
+        return f"{what} {direction} from {money(sub.previous_amount, symbol)}"
     return ""
 
 
-def table(subs: list[Subscription], symbol: str) -> str:
-    head = ("MERCHANT", "EVERY", "AMOUNT", "PER YEAR", "LAST CHARGE", "NOTE")
+def table(subs: list[Subscription], symbol: str, income: bool = False) -> str:
+    if income:
+        head = ("FROM", "EVERY", "AMOUNT", "PER YEAR", "LAST PAYMENT", "NOTE")
+    else:
+        head = ("MERCHANT", "EVERY", "AMOUNT", "PER YEAR", "LAST CHARGE", "NOTE")
     rows = [
         (
             s.name,
@@ -34,7 +38,7 @@ def table(subs: list[Subscription], symbol: str) -> str:
             money(s.amount, symbol),
             money(s.per_year, symbol),
             s.last.isoformat(),
-            _note(s, symbol),
+            _note(s, symbol, income),
         )
         for s in subs
     ]
@@ -70,9 +74,30 @@ def report(subs: list[Subscription], symbol: str) -> str:
     return "\n".join(parts)
 
 
-def as_rows(subs: list[Subscription]) -> list[dict[str, object]]:
+def income_report(income: list[Subscription], symbol: str) -> str:
+    if not income:
+        return "No recurring income found."
+    active = [s for s in income if s.active]
+    stopped = [s for s in income if not s.active]
+    parts = ["Recurring income:"]
+    if active:
+        total = sum((s.per_year for s in active), Decimal(0))
+        noun = "payment" if len(active) == 1 else "payments"
+        parts += [
+            table(active, symbol, income=True),
+            "",
+            f"{len(active)} recurring {noun} in, about {money(total, symbol)} per year "
+            f"({money(total / 12, symbol)} per month).",
+        ]
+    if stopped:
+        parts += ["", "Stopped (no recent payment):", table(stopped, symbol, income=True)]
+    return "\n".join(parts)
+
+
+def as_rows(subs: list[Subscription], kind: str | None = None) -> list[dict[str, object]]:
     return [
         {
+            **({"kind": kind} if kind else {}),
             "name": s.name,
             "every": s.frequency.label,
             "amount": str(s.amount),
@@ -103,7 +128,8 @@ def build_parser() -> argparse.ArgumentParser:
             "Examples:\n"
             "  subspot transactions.csv\n"
             "  subspot jan-jun.csv jul-dec.csv --currency EUR\n"
-            "  subspot transactions.csv --since 2026-01-01"
+            "  subspot transactions.csv --since 2026-01-01\n"
+            "  subspot transactions.csv --include-income"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -116,6 +142,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--min-amount", default="0", metavar="N", help="ignore charges smaller than N")
     parser.add_argument(
         "--since", type=iso_date, metavar="DATE", help="only use transactions on or after DATE (YYYY-MM-DD)"
+    )
+    parser.add_argument(
+        "--include-income", action="store_true", help="also list recurring money in, like paychecks"
     )
 
     cols = parser.add_argument_group("column and format overrides (normally detected automatically)")
@@ -169,11 +198,18 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     subs = find_subscriptions(transactions, tuple(args.ignore), min_amount)
+    income: list[Subscription] = []
+    if args.include_income:
+        money_in = [Transaction(t.date, t.description, -t.amount) for t in transactions if t.amount < 0]
+        income = find_subscriptions(money_in, tuple(args.ignore), min_amount)
 
-    if args.format == "json":
-        print(json.dumps(as_rows(subs), indent=2))
-    elif args.format == "csv":
+    if args.include_income:
+        rows = as_rows(subs, "charge") + as_rows(income, "income")
+    else:
         rows = as_rows(subs)
+    if args.format == "json":
+        print(json.dumps(rows, indent=2))
+    elif args.format == "csv":
         writer = csv.DictWriter(
             sys.stdout, fieldnames=list(rows[0]) if rows else ["name"], lineterminator="\n"
         )
@@ -184,6 +220,9 @@ def main(argv: list[str] | None = None) -> int:
         last = max(t.date for t in transactions)
         print(f"Read {len(transactions)} transactions from {first} to {last}.\n")
         print(report(subs, args.currency))
+        if args.include_income:
+            print()
+            print(income_report(income, args.currency))
     return 0
 
 

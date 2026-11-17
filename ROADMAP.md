@@ -5,7 +5,7 @@ Small, focused releases. Suggestions are welcome in [issues](https://github.com/
 ## 0.2
 - [ ] `--html report.html`: a single-file report you can open in a browser
 - [x] `--since 2026-01-01` to limit the date range
-- [ ] Recurring income section (paychecks, refunds) behind `--include-income`
+- [x] Recurring income section (paychecks, refunds) behind `--include-income`
 
 ## 0.3
 - [ ] Export renewal dates to an `.ics` calendar, to get reminded before yearly renewals

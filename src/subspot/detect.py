@@ -24,6 +24,7 @@ class Frequency:
 FREQUENCIES = (
     Frequency("week", 7, 2, 52, 4),
     Frequency("2 weeks", 14, 3, 26, 4),
+    Frequency("half month", 15.22, 3.5, 24, 4),  # paydays like the 1st and 15th
     Frequency("month", 30.44, 4.5, 12, 3),
     Frequency("3 months", 91.3, 10, 4, 3),
     Frequency("6 months", 182.6, 15, 2, 2),
@@ -75,13 +76,18 @@ def _schedule(dates: list[dt.date]) -> Frequency | None:
     gaps = [(b - a).days for a, b in zip(dates, dates[1:])]
     if not gaps:
         return None
+    fitting = []
     for freq in FREQUENCIES:
         if len(dates) < freq.min_charges:
             continue
         fits = sum(1 for g in gaps if abs(g - freq.days) <= freq.tolerance)
         if fits / len(gaps) >= MATCH_SHARE:
-            return freq
-    return None
+            fitting.append(freq)
+    if not fitting:
+        return None
+    # Every 2 weeks and twice a month overlap; the average gap tells them apart.
+    mean = statistics.mean(gaps)
+    return min(fitting, key=lambda f: abs(f.days - mean))
 
 
 def _merge_similar(groups: dict[str, list[Transaction]]) -> dict[str, list[Transaction]]:

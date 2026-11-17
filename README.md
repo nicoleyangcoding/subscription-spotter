@@ -57,6 +57,7 @@ You can pass several files at once, for example a checking account and a credit 
 | `--ignore TEXT` | Skip charges whose description contains `TEXT` (repeatable), e.g. `--ignore rent` |
 | `--min-amount N` | Ignore charges under `N` |
 | `--since DATE` | Only use transactions on or after `DATE`, e.g. `--since 2026-01-01` |
+| `--include-income` | Also list recurring money in, like paychecks, in its own section |
 | `--currency SYMBOL` | Symbol shown before amounts (default `$`) |
 | `--format json` / `csv` | Machine-readable output |
 | `--dayfirst` | Read ambiguous dates like `03/04/2026` as 3 April |
@@ -68,8 +69,10 @@ You can pass several files at once, for example a checking account and a credit 
 
 1. Descriptions are cleaned up, so `SQ *CORNER BAKERY #0412 SEATTLE WA` and `SQ *CORNER BAKERY #0398` count as the same merchant.
 2. Charges at one merchant are split by amount, so two different plans at the same store are tracked separately.
-3. A group counts as recurring when at least 75% of the gaps between charges match a schedule: weekly, every 2 weeks, monthly, every 3 or 6 months, or yearly. Monthly charges need 3 or more payments, and yearly charges need 2.
+3. A group counts as recurring when at least 75% of the gaps between charges match a schedule: weekly, every 2 weeks, twice a month (`half month`), monthly, every 3 or 6 months, or yearly. Monthly charges need 3 or more payments, and yearly charges need 2.
 4. A charge that hasn't appeared for more than 1.5 cycles is listed as **possibly cancelled**.
+
+With `--include-income`, money coming in goes through the same steps and is listed under **Recurring income**, with its own yearly total. In JSON and CSV output, each row then gets a `kind` of `charge` or `income`. One-off refunds don't show up, because they don't repeat.
 
 Groceries and restaurants rarely show up, because their amounts vary too much. Rent, loans and utilities with fixed bills do show up, because they are recurring charges too. Use `--ignore` to hide them.
 
