@@ -111,6 +111,7 @@ def find_subscriptions(
     transactions: list[Transaction],
     ignore: tuple[str, ...] = (),
     min_amount: Decimal = Decimal("0"),
+    renames: list[tuple[str, str]] | None = None,
 ) -> list[Subscription]:
     if not transactions:
         return []
@@ -118,15 +119,27 @@ def find_subscriptions(
     ignore_upper = tuple(word.upper() for word in ignore)
 
     by_merchant: dict[str, list[Transaction]] = defaultdict(list)
+    # Renamed charges are grouped by their new name and kept out of _merge_similar, so "Netflix"
+    # and "Netflix Basic" stay apart.
+    by_name: dict[str, list[Transaction]] = defaultdict(list)
     for tx in transactions:
         if tx.amount <= 0 or tx.amount < min_amount:
             continue
-        if any(word in tx.description.upper() for word in ignore_upper):
+        description = tx.description.upper()
+        if any(word in description for word in ignore_upper):
             continue
-        by_merchant[merchant_key(tx.description)].append(tx)
+        name = next((name for match, name in renames or () if match in description), None)
+        if name:
+            by_name[name].append(tx)
+        else:
+            by_merchant[merchant_key(tx.description)].append(tx)
+
+    groups = {display_name(key): charges for key, charges in _merge_similar(by_merchant).items()}
+    for name, charges in by_name.items():
+        groups.setdefault(name, []).extend(charges)
 
     found: list[Subscription] = []
-    for key, charges in _merge_similar(by_merchant).items():
+    for name, charges in groups.items():
         for group in _clusters(charges):
             # Same-day duplicates (a charge and its retry) count once.
             unique: dict[dt.date, Transaction] = {}
@@ -144,7 +157,7 @@ def find_subscriptions(
             overdue = (statement_end - last.date).days > freq.days * 1.5 + freq.tolerance
             found.append(
                 Subscription(
-                    name=display_name(key),
+                    name=name,
                     frequency=freq,
                     amount=last.amount,
                     previous_amount=previous,

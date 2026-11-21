@@ -185,3 +185,22 @@ def read_csv(
             parsed = [(d, s, -a) for d, s, a in parsed]
 
     return [Transaction(d, s, a) for d, s, a in parsed]
+
+
+def read_renames(path: str | Path) -> list[tuple[str, str]]:
+    """Read "DESCRIPTION TEXT -> Name to show" lines. Blank lines and # comments are skipped."""
+    path = Path(path)
+    try:
+        text = path.read_bytes().decode("utf-8-sig", errors="replace")
+    except FileNotFoundError:
+        raise LoadError(f"{path}: file not found") from None
+    rules = []
+    for number, line in enumerate(text.splitlines(), 1):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        match, arrow, name = (part.strip() for part in line.partition("->"))
+        if not arrow or not match or not name:
+            raise LoadError(f'{path}, line {number}: expected "DESCRIPTION TEXT -> Name", got {line!r}')
+        rules.append((match.upper(), name))
+    return rules

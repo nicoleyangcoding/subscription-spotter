@@ -11,7 +11,7 @@ from decimal import Decimal, InvalidOperation
 
 from . import __version__
 from .detect import Subscription, find_subscriptions
-from .load import Columns, LoadError, Transaction, read_csv
+from .load import Columns, LoadError, Transaction, read_csv, read_renames
 
 
 def money(value: Decimal, symbol: str) -> str:
@@ -129,7 +129,8 @@ def build_parser() -> argparse.ArgumentParser:
             "  subspot transactions.csv\n"
             "  subspot jan-jun.csv jul-dec.csv --currency EUR\n"
             "  subspot transactions.csv --since 2026-01-01\n"
-            "  subspot transactions.csv --include-income"
+            "  subspot transactions.csv --include-income\n"
+            "  subspot transactions.csv --rename renames.txt"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -145,6 +146,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--include-income", action="store_true", help="also list recurring money in, like paychecks"
+    )
+    parser.add_argument(
+        "--rename",
+        metavar="FILE",
+        help='file of "DESCRIPTION TEXT -> Name" lines to name merchants yourself',
     )
 
     cols = parser.add_argument_group("column and format overrides (normally detected automatically)")
@@ -178,7 +184,10 @@ def main(argv: list[str] | None = None) -> int:
     charges_positive = True if args.charges_positive else False if args.charges_negative else None
 
     transactions = []
+    renames = None
     try:
+        if args.rename:
+            renames = read_renames(args.rename)
         for path in args.files:
             transactions += read_csv(
                 path,
@@ -197,11 +206,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"subspot: no transactions on or after {args.since}", file=sys.stderr)
             return 2
 
-    subs = find_subscriptions(transactions, tuple(args.ignore), min_amount)
+    subs = find_subscriptions(transactions, tuple(args.ignore), min_amount, renames)
     income: list[Subscription] = []
     if args.include_income:
         money_in = [Transaction(t.date, t.description, -t.amount) for t in transactions if t.amount < 0]
-        income = find_subscriptions(money_in, tuple(args.ignore), min_amount)
+        income = find_subscriptions(money_in, tuple(args.ignore), min_amount, renames)
 
     if args.include_income:
         rows = as_rows(subs, "charge") + as_rows(income, "income")

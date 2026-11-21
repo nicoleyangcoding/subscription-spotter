@@ -183,3 +183,42 @@ def test_cli_include_income_none_found(tmp_path, capsys):
     statement.write_text("\n".join(lines) + "\n")
     assert main([str(statement), "--include-income"]) == 0
     assert "No recurring income found." in capsys.readouterr().out
+
+
+def test_renames_group_and_name_charges():
+    charges = (
+        monthly("AMZN PRIME*2K4L1 AMZN.COM/BILL WA", "14.99", 2)
+        + monthly("AMAZON PRIME MEMBERSHIP", "14.99", 2, start=(2026, 3, 5))
+        + monthly("NETFLIX.COM", "15.49", 4)
+        + monthly("NETFLIX BASIC", "6.99", 4, start=(2026, 1, 9))
+    )
+    renames = [("PRIME", "Prime membership"), ("NETFLIX BASIC", "Netflix Basic"), ("NETFLIX", "Netflix")]
+    subs = find_subscriptions(charges, renames=renames)
+    assert sorted((s.name, s.count) for s in subs) == [
+        ("Netflix", 4),
+        ("Netflix Basic", 4),
+        ("Prime membership", 4),
+    ]
+
+
+def test_rename_joins_automatic_name():
+    charges = monthly("CLOUDBOX", "2.99", 2) + monthly("CB*STORAGE 8812", "2.99", 2, start=(2026, 3, 5))
+    subs = find_subscriptions(charges, renames=[("CB*STORAGE", "Cloudbox")])
+    assert [(s.name, s.count) for s in subs] == [("Cloudbox", 4)]
+
+
+def test_cli_rename(tmp_path, capsys):
+    rules = tmp_path / "renames.txt"
+    rules.write_text("# my names\n\nstreamflix -> Streamflix Premium\n")
+    assert main([str(SAMPLE), "--rename", str(rules)]) == 0
+    out = capsys.readouterr().out
+    assert "Streamflix Premium" in out and "price up from $15.49" in out
+
+
+def test_cli_rename_errors(tmp_path, capsys):
+    assert main([str(SAMPLE), "--rename", str(tmp_path / "missing.txt")]) == 2
+    assert "file not found" in capsys.readouterr().err
+    rules = tmp_path / "renames.txt"
+    rules.write_text("STREAMFLIX Streamflix\n")
+    assert main([str(SAMPLE), "--rename", str(rules)]) == 2
+    assert "line 1: expected" in capsys.readouterr().err

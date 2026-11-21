@@ -13,7 +13,7 @@ Small, focused releases. Suggestions are welcome in [issues](https://github.com/
 - [ ] Support OFX/QFX files in addition to CSV
 
 ## Later
-- [ ] Optional rules file for renaming merchants (`"AMZN PRIME" -> "Prime membership"`)
+- [x] Optional rules file for renaming merchants (`"AMZN PRIME" -> "Prime membership"`)
 - [ ] Publish to PyPI so `pipx install subscription-spotter` works
 
 ## Not planned

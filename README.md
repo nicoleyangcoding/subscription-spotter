@@ -58,12 +58,25 @@ You can pass several files at once, for example a checking account and a credit 
 | `--min-amount N` | Ignore charges under `N` |
 | `--since DATE` | Only use transactions on or after `DATE`, e.g. `--since 2026-01-01` |
 | `--include-income` | Also list recurring money in, like paychecks, in its own section |
+| `--rename FILE` | Name merchants yourself (see below) |
 | `--currency SYMBOL` | Symbol shown before amounts (default `$`) |
 | `--format json` / `csv` | Machine-readable output |
 | `--dayfirst` | Read ambiguous dates like `03/04/2026` as 3 April |
 | `--date-col`, `--desc-col`, `--amount-col` | Name the columns yourself if detection fails |
 | `--debit-col`, `--credit-col` | For exports with separate money out and money in columns |
 | `--charges-positive` / `--charges-negative` | Say how spending is signed, if the guess is wrong |
+
+## Naming merchants yourself
+
+If a merchant shows up under an odd name, or one service is split across two descriptions, write a small text file with one rule per line:
+
+```
+# description text -> name to show
+AMZN PRIME -> Prime membership
+NETFLIX -> Netflix
+```
+
+Then pass it with `subspot transactions.csv --rename renames.txt`. A rule applies when its text appears anywhere in a description, ignoring case, and the first matching rule wins. Charges with the same new name are grouped together.
 
 ## How it decides something is recurring
 
