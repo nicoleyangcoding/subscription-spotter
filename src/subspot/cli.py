@@ -12,6 +12,7 @@ from decimal import Decimal, InvalidOperation
 from . import __version__
 from .detect import Subscription, find_subscriptions
 from .load import Columns, LoadError, Transaction, read_csv, read_renames
+from .renewals import ics
 
 
 def money(value: Decimal, symbol: str) -> str:
@@ -130,7 +131,8 @@ def build_parser() -> argparse.ArgumentParser:
             "  subspot jan-jun.csv jul-dec.csv --currency EUR\n"
             "  subspot transactions.csv --since 2026-01-01\n"
             "  subspot transactions.csv --include-income\n"
-            "  subspot transactions.csv --rename renames.txt"
+            "  subspot transactions.csv --rename renames.txt\n"
+            "  subspot transactions.csv --ics renewals.ics"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -152,6 +154,8 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="FILE",
         help='file of "DESCRIPTION TEXT -> Name" lines to name merchants yourself',
     )
+
+    parser.add_argument("--ics", metavar="FILE", help="also write expected renewals to an .ics calendar file")
 
     cols = parser.add_argument_group("column and format overrides (normally detected automatically)")
     cols.add_argument("--date-col", metavar="NAME")
@@ -211,6 +215,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.include_income:
         money_in = [Transaction(t.date, t.description, -t.amount) for t in transactions if t.amount < 0]
         income = find_subscriptions(money_in, tuple(args.ignore), min_amount, renames)
+
+    if args.ics:
+        try:
+            with open(args.ics, "w", encoding="utf-8", newline="") as f:
+                f.write(ics(subs, args.currency))
+        except OSError as exc:
+            print(f"subspot: can't write {args.ics}: {exc.strerror}", file=sys.stderr)
+            return 2
+        count = sum(1 for s in subs if s.active)
+        noun = "renewal" if count == 1 else "renewals"
+        print(f"Wrote {count} {noun} to {args.ics}.", file=sys.stderr)
 
     if args.include_income:
         rows = as_rows(subs, "charge") + as_rows(income, "income")

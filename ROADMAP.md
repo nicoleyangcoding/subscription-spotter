@@ -8,7 +8,7 @@ Small, focused releases. Suggestions are welcome in [issues](https://github.com/
 - [x] Recurring income section (paychecks, refunds) behind `--include-income`
 
 ## 0.3
-- [ ] Export renewal dates to an `.ics` calendar, to get reminded before yearly renewals
+- [x] Export renewal dates to an `.ics` calendar, to get reminded before yearly renewals
 - [ ] Compare two runs and show new or cancelled subscriptions
 - [ ] Support OFX/QFX files in addition to CSV
 

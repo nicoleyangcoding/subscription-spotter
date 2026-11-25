@@ -59,6 +59,7 @@ You can pass several files at once, for example a checking account and a credit 
 | `--since DATE` | Only use transactions on or after `DATE`, e.g. `--since 2026-01-01` |
 | `--include-income` | Also list recurring money in, like paychecks, in its own section |
 | `--rename FILE` | Name merchants yourself (see below) |
+| `--ics FILE` | Also write expected renewals to a calendar file (see below) |
 | `--currency SYMBOL` | Symbol shown before amounts (default `$`) |
 | `--format json` / `csv` | Machine-readable output |
 | `--dayfirst` | Read ambiguous dates like `03/04/2026` as 3 April |
@@ -77,6 +78,10 @@ NETFLIX -> Netflix
 ```
 
 Then pass it with `subspot transactions.csv --rename renames.txt`. A rule applies when its text appears anywhere in a description, ignoring case, and the first matching rule wins. Charges with the same new name are grouped together.
+
+## Renewal reminders
+
+`subspot transactions.csv --ics renewals.ics` also writes a calendar file with an event on the date each active charge is next expected, repeating on its schedule. Import it into Apple Calendar, Google Calendar or Outlook. Each event has a reminder 1 day before, or 2 weeks before for yearly charges and 1 week before for 3- and 6-monthly ones, so a yearly renewal doesn't catch you by surprise. Running it again on a newer statement and re-importing updates the same events instead of adding copies.
 
 ## How it decides something is recurring
 
